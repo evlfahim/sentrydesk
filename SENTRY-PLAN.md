@@ -27,7 +27,7 @@ Core Docker client, metrics fetcher, log parser, and cleanup engine are extracte
 
 ## Steps
 - [x] 1. Scaffold project with Vite, React, Electron, and Dockerode, then run npm test to verify baseline.
-- [ ] 2. Implement Docker client wrapper and validate connection using docker ps equivalent via npm run test:client.
+- [x] 2. Implement Docker client wrapper and validate connection using docker ps equivalent via npm run test:client.
 - [ ] 3. Build real-time CPU/RAM metrics stream and verify output via npm run test:metrics.
 - [ ] 4. Create log viewer with search/filter and confirm functionality with npm run test:logs.
 - [ ] 5. Add one-click restart handler and verify container lifecycle changes via npm run test:restart.

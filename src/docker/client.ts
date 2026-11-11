@@ -167,14 +167,16 @@ export class DockerClient {
     }
 
     const container = this.docker.getContainer(containerId)
-    const logs = await container.logs({
+    const logsOptions: Record<string, unknown> = {
       stdout: true,
       stderr: true,
       tail: options.tail ?? 100,
-      since: options.since,
-      timestamps: options.timestamps,
-      follow: options.follow,
-    })
+    }
+    if (options.timestamps !== undefined) logsOptions.timestamps = options.timestamps
+    if (options.follow !== undefined) logsOptions.follow = options.follow
+    if (options.since !== undefined) logsOptions.since = options.since
+
+    const logs = await container.logs(logsOptions)
 
     // Dockerode returns a NodeJS.ReadableStream; we need to consume it
     return new Promise<string[]>((resolve, reject) => {
