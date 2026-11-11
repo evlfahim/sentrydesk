@@ -3,6 +3,7 @@ import { DockerClient } from './docker/client'
 import { MetricsPanel } from './ui/metrics-panel'
 import { LogPanel } from './ui/log-panel'
 import { CleanupPanel } from './ui/cleanup-panel'
+import { ComposePanel } from './ui/compose-panel'
 import './App.css'
 
 function App() {
@@ -47,6 +48,7 @@ function App() {
       <main className="app-main">
         <MetricsPanel />
         <LogPanel />
+        <ComposePanel />
         <CleanupPanel />
       </main>
     </div>

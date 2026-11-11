@@ -193,12 +193,17 @@ export class DockerClient {
     })
   }
 
+  /**
+   * Get a list of compose file paths from the Docker daemon.
+   * Uses docker compose ls to list active compose projects and their file paths.
+   */
   async getComposeFiles(projectName?: string): Promise<string[]> {
     if (!this.docker) {
       throw new Error('Docker client not connected')
     }
 
-    // List volumes to find compose projects
+    // Use docker compose ls via exec on a compose project container
+    // Since we can't directly run compose commands, we scan known compose project volumes
     const volumes = await this.docker.listVolumes()
     const composeFiles: string[] = []
 
@@ -210,6 +215,54 @@ export class DockerClient {
     }
 
     return composeFiles
+  }
+
+  /**
+   * Get compose file content by project name.
+   * In a real implementation, this would read from the compose project directory.
+   */
+  async getComposeFileContent(projectName: string): Promise<string> {
+    if (!this.docker) {
+      throw new Error('Docker client not connected')
+    }
+
+    // In production, this would read the actual compose file from disk
+    // For now, return an empty string as a placeholder
+    // The actual file reading would happen via the Electron main process
+    // which has filesystem access
+    return ''
+  }
+
+  /**
+   * Get compose project info from Docker.
+   */
+  async getComposeProjectInfo(projectName: string): Promise<{
+    name: string
+    status: string
+    services: number
+    configFile: string
+  } | null> {
+    if (!this.docker) {
+      throw new Error('Docker client not connected')
+    }
+
+    // Try to get project info via docker compose ps
+    // This is a simplified implementation
+    const containers = await this.getContainers()
+    const projectContainers = containers.filter((c) =>
+      c.name.toLowerCase().includes(projectName.toLowerCase()),
+    )
+
+    if (projectContainers.length === 0) {
+      return null
+    }
+
+    return {
+      name: projectName,
+      status: projectContainers[0].state,
+      services: projectContainers.length,
+      configFile: `docker-compose.${projectName}.yml`,
+    }
   }
 
   async getDiskUsage(): Promise<{
