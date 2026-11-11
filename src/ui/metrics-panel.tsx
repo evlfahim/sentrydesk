@@ -17,10 +17,22 @@ export function MetricsPanel() {
   }, [dockerClient, metricsStore])
 
   useEffect(() => {
+    // Subscribe to real-time updates
+    const unsubscribe = metricsStore.subscribe((entries) => {
+      setMetrics(entries)
+    })
+
+    // Initial fetch
     refreshMetrics()
+
+    // Also poll in case subscribe doesn't fire immediately
     const interval = setInterval(refreshMetrics, 2000)
-    return () => clearInterval(interval)
-  }, [refreshMetrics])
+
+    return () => {
+      unsubscribe()
+      clearInterval(interval)
+    }
+  }, [refreshMetrics, metricsStore])
 
   const formatBytes = (bytes: number): string => {
     if (bytes === 0) return '0 B'

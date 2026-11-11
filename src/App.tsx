@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { DockerClient } from './docker/client'
-import { MetricsStore } from './metrics/metrics'
-import { LogStore } from './logs/logs'
-import { CleanupEngine } from './disk/cleanup'
+import { MetricsPanel } from './ui/metrics-panel'
+import { LogPanel } from './ui/log-panel'
+import { CleanupPanel } from './ui/cleanup-panel'
 import './App.css'
 
 function App() {
@@ -45,9 +45,9 @@ function App() {
         </div>
       </header>
       <main className="app-main">
-        <MetricsStore />
-        <LogStore />
-        <CleanupEngine />
+        <MetricsPanel />
+        <LogPanel />
+        <CleanupPanel />
       </main>
     </div>
   )

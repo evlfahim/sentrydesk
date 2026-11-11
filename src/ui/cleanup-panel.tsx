@@ -62,7 +62,3 @@ export function CleanupPanel() {
     </div>
   )
 }
-
-export function CleanupEngine() {
-  return <CleanupPanel />
-}

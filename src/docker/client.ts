@@ -176,7 +176,7 @@ export class DockerClient {
     if (options.follow !== undefined) logsOptions.follow = options.follow
     if (options.since !== undefined) logsOptions.since = options.since
 
-    const logs = await container.logs(logsOptions)
+    const logs: any = await container.logs(logsOptions)
 
     // Dockerode returns a NodeJS.ReadableStream; we need to consume it
     return new Promise<string[]>((resolve, reject) => {
@@ -246,7 +246,7 @@ export class DockerClient {
         try {
           const container = this.docker!.getContainer(c.Id)
           const inspect = await container.inspect()
-          containerSize += inspect.SizeRw || 0
+          containerSize += (inspect as any).SizeRw || 0
         } catch {
           // Container may have been removed
         }
