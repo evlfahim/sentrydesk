@@ -37,4 +37,4 @@ Core Docker client, metrics fetcher, log parser, and cleanup engine are extracte
 - [x] 9. Set up IPC bridge between Electron main process and React UI, then run npm run test:ipc.
 - [x] 10. Package the desktop application and verify cross-platform builds with npm run build:desktop.
 - [x] 11. Scaffold VS Code extension, register commands, and connect to @sentrydesk/core via IPC, then run npm run test:plugin.
-- [ ] 12. Write comprehensive README with run instructions, architecture diagram, and step-by-step plugin conversion guide.
+- [x] 12. Write comprehensive README with run instructions, architecture diagram, and step-by-step plugin conversion guide.
