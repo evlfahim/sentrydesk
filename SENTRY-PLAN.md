@@ -32,7 +32,7 @@ Core Docker client, metrics fetcher, log parser, and cleanup engine are extracte
 - [x] 4. Create log viewer with search/filter and confirm functionality with npm run test:logs.
 - [x] 5. Add one-click restart handler and verify container lifecycle changes via npm run test:restart.
 - [x] 6. Implement Docker Compose YAML viewer and validate parsing with npm run test:compose.
-- [ ] 7. Develop disk space analyzer and verify cleanup suggestions with npm run test:disk.
+- [x] 7. Develop disk space analyzer and verify cleanup suggestions with npm run test:disk.
 - [ ] 8. Extract all Docker client and metrics logic into a shared @sentrydesk/core package, then run npm run test:core.
 - [ ] 9. Set up IPC bridge between Electron main process and React UI, then run npm run test:ipc.
 - [ ] 10. Package the desktop application and verify cross-platform builds with npm run build:desktop.

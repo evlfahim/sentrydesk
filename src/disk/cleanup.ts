@@ -55,8 +55,8 @@ export class CleanupEngine {
     try {
       const images = await this.dockerClient.getDocker()!.listImages({ all: true })
       for (const img of images) {
-        // Dangling images have no tags (RepoTags is empty or null)
-        if (img.RepoTags && img.RepoTags.length === 0) {
+        // Dangling images have no tags (RepoTags is empty, null, or undefined)
+        if (!img.RepoTags || img.RepoTags.length === 0) {
           this.suggestions.push({
             id: `img-${img.Id}`,
             type: 'image',
