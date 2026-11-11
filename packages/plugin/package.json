@@ -1,0 +1,172 @@
+{
+  "name": "sentrydesk-vscode",
+  "displayName": "SentryDesk",
+  "description": "Docker container monitoring dashboard for VS Code — live CPU/RAM, logs, restart, compose viewer, disk cleanup.",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "sentrydesk.connect",
+        "title": "SentryDesk: Connect to Docker",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "sentrydesk.disconnect",
+        "title": "SentryDesk: Disconnect from Docker",
+        "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "sentrydesk.refresh",
+        "title": "SentryDesk: Refresh Containers",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "sentrydesk.restart",
+        "title": "SentryDesk: Restart Container",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "sentrydesk.stop",
+        "title": "SentryDesk: Stop Container",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "sentrydesk.start",
+        "title": "SentryDesk: Start Container",
+        "icon": "$(debug-play)"
+      },
+      {
+        "command": "sentrydesk.remove",
+        "title": "SentryDesk: Remove Container",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "sentrydesk.viewLogs",
+        "title": "SentryDesk: View Container Logs",
+        "icon": "$(output)"
+      },
+      {
+        "command": "sentrydesk.viewMetrics",
+        "title": "SentryDesk: View Container Metrics",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "sentrydesk.viewCompose",
+        "title": "SentryDesk: View Compose File",
+        "icon": "$(file-symlink-file)"
+      },
+      {
+        "command": "sentrydesk.viewCleanup",
+        "title": "SentryDesk: View Disk Cleanup",
+        "icon": "$(clean-up)"
+      },
+      {
+        "command": "sentrydesk.openDashboard",
+        "title": "SentryDesk: Open Dashboard",
+        "icon": "$(dashboard)"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "sentrydesk.connect"
+        },
+        {
+          "command": "sentrydesk.disconnect"
+        },
+        {
+          "command": "sentrydesk.refresh"
+        },
+        {
+          "command": "sentrydesk.restart"
+        },
+        {
+          "command": "sentrydesk.stop"
+        },
+        {
+          "command": "sentrydesk.start"
+        },
+        {
+          "command": "sentrydesk.remove"
+        },
+        {
+          "command": "sentrydesk.viewLogs"
+        },
+        {
+          "command": "sentrydesk.viewMetrics"
+        },
+        {
+          "command": "sentrydesk.viewCompose"
+        },
+        {
+          "command": "sentrydesk.viewCleanup"
+        },
+        {
+          "command": "sentrydesk.openDashboard"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "sentrydesk.restart",
+          "group": "inline",
+          "when": "view == sentrydesk.containers && viewItem =~ /container/"
+        },
+        {
+          "command": "sentrydesk.stop",
+          "group": "inline",
+          "when": "view == sentrydesk.containers && viewItem =~ /container/"
+        },
+        {
+          "command": "sentrydesk.start",
+          "group": "inline",
+          "when": "view == sentrydesk.containers && viewItem =~ /container/"
+        },
+        {
+          "command": "sentrydesk.remove",
+          "group": "inline",
+          "when": "view == sentrydesk.containers && viewItem =~ /container/"
+        },
+        {
+          "command": "sentrydesk.viewLogs",
+          "group": "inline",
+          "when": "view == sentrydesk.containers && viewItem =~ /container/"
+        }
+      ]
+    },
+    "views": {
+      "sentrydesk": [
+        {
+          "id": "sentrydesk.containers",
+          "name": "Containers",
+          "icon": "$(container)"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "sentrydesk.containers",
+        "contents": "No containers connected.\n[Connect to Docker](command:sentrydesk.connect)\n\nConnect to the Docker daemon to start monitoring containers."
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@sentrydesk/core": "*"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.145.0",
+    "typescript": "^5.5.2",
+    "vitest": "^1.6.0"
+  }
+}
