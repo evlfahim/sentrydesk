@@ -14,4 +14,9 @@ export default defineConfig({
     environment: 'node',
     include: ['src/__tests__/**/*.test.ts'],
   },
+  server: {
+    deps: {
+      inline: ['@sentrydesk/core'],
+    },
+  },
 })

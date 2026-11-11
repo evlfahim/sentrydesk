@@ -1,0 +1,21 @@
+{
+  "name": "@sentrydesk/core",
+  "version": "0.1.0",
+  "description": "Shared Docker client, metrics, logs, cleanup, compose, and restart logic for SentryDesk",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "dockerode": "^4.0.2",
+    "js-yaml": "^5.5.0"
+  },
+  "devDependencies": {
+    "@types/dockerode": "^3.3.30",
+    "@types/js-yaml": "^4.0.9",
+    "typescript": "^5.5.2",
+    "vitest": "^1.6.0"
+  }
+}
