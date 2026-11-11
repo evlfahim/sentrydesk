@@ -65,9 +65,6 @@ vi.mock('vscode', () => ({
     command: any
     collapsibleState: number
     constructor(label?: string, collapsibleState?: number) {
-      if (label !== undefined) {
-        Object.defineProperty(this, 'label', { value: label, writable: true, enumerable: true })
-      }
       if (collapsibleState !== undefined) {
         this.collapsibleState = collapsibleState
       }
@@ -254,6 +251,9 @@ describe('VS Code Extension', () => {
       const provider = new ContainerTreeProvider(dockerClient, metricsStore)
 
       expect(provider).toBeDefined()
+      // getContainers is called on refresh(), not in constructor
+      expect(dockerClient.getContainers).not.toHaveBeenCalled()
+      await provider.refresh()
       expect(dockerClient.getContainers).toHaveBeenCalled()
     })
 
