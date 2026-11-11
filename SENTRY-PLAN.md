@@ -26,7 +26,7 @@ TypeScript/Node.js (Electron for desktop shell, React/Vite for UI, Dockerode SDK
 Core Docker client, metrics fetcher, log parser, and cleanup engine are extracted into a shared @sentrydesk/core TypeScript package. The desktop app consumes this package directly via IPC, while the VS Code plugin imports the same package and bridges its commands to the Docker daemon through a lightweight IPC server. This ensures identical behavior across desktop and IDE without code duplication.
 
 ## Steps
-- [ ] 1. Scaffold project with Vite, React, Electron, and Dockerode, then run npm test to verify baseline.
+- [x] 1. Scaffold project with Vite, React, Electron, and Dockerode, then run npm test to verify baseline.
 - [ ] 2. Implement Docker client wrapper and validate connection using docker ps equivalent via npm run test:client.
 - [ ] 3. Build real-time CPU/RAM metrics stream and verify output via npm run test:metrics.
 - [ ] 4. Create log viewer with search/filter and confirm functionality with npm run test:logs.
