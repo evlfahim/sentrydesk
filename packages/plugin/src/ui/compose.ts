@@ -5,20 +5,33 @@
  */
 
 import * as vscode from 'vscode'
-import { parseComposeFile, ComposeConfig, ComposeValidationError, ComposeFile } from '@sentrydesk/core'
+import { parseComposeFile, ComposeFile } from '@sentrydesk/core'
 
 export class ComposePanelProvider {
   private panel: vscode.TextDocument | null = null
-  private currentContent: string = ''
-  private currentProjectName: string = ''
+  private lastResult: ComposeFile | null = null
+
+  get currentResult(): ComposeFile | null {
+    return this.lastResult
+  }
 
   async showCompose() {
     // Try to find a compose file in the workspace
-    const files = await vscode.workspace.findFiles('**/docker-compose*.yml', '**/node_modules/**')
+    const files = await vscode.workspace.findFiles(
+      '**/{docker-compose,compose}*.{yml,yaml}',
+      '**/node_modules/**',
+    )
     let composeFile: vscode.Uri | undefined
 
-    if (files.length > 0) {
+    if (files.length === 1) {
       composeFile = files[0]
+    } else if (files.length > 1) {
+      const picked = await vscode.window.showQuickPick(
+        files.map((uri) => ({ label: vscode.workspace.asRelativePath(uri), uri })),
+        { placeHolder: 'Select a Docker Compose file' },
+      )
+      if (!picked) return
+      composeFile = picked.uri
     } else {
       // Prompt user to select a file
       const selected = await vscode.window.showOpenDialog({
@@ -32,23 +45,26 @@ export class ComposePanelProvider {
       composeFile = selected[0]
     }
 
+    let text: string
     try {
       const content = await vscode.workspace.fs.readFile(composeFile)
-      const text = new TextDecoder().decode(content)
-      await this.parseContent(text)
+      text = new TextDecoder().decode(content)
     } catch (err: any) {
       throw new Error(`Failed to read compose file: ${err.message}`)
     }
+    await this.parseContent(text, undefined, composeFile.fsPath)
   }
 
-  async parseContent(content: string, projectName?: string) {
-    this.currentContent = content
-    this.currentProjectName = projectName || 'default'
-
+  async parseContent(content: string, projectName?: string, filePath?: string): Promise<ComposeFile> {
     const result = parseComposeFile(content, projectName)
+    if (filePath) {
+      result.path = filePath
+    }
+    this.lastResult = result
+
     const formatted = this.formatComposeResult(result)
 
-    if (this.panel && this.panel.uri) {
+    if (this.panel && this.panel.uri && !this.panel.isClosed) {
       const edit = new vscode.WorkspaceEdit()
       const fullRange = new vscode.Range(
         new vscode.Position(0, 0),
@@ -58,12 +74,14 @@ export class ComposePanelProvider {
       await vscode.workspace.applyEdit(edit)
     } else {
       const doc = await vscode.workspace.openTextDocument({
-        language: 'compose',
+        language: 'markdown',
         content: formatted,
       })
       this.panel = doc
       await vscode.window.showTextDocument(doc, { preview: false })
     }
+
+    return result
   }
 
   private formatComposeResult(result: ComposeFile): string {
@@ -73,20 +91,23 @@ export class ComposePanelProvider {
       '',
     ]
 
-    if (result.errors && result.errors.length > 0) {
-      lines.push('## Validation Errors')
+    if (result.errors.length > 0) {
+      lines.push('## Validation')
       lines.push('')
       for (const error of result.errors) {
-        const severity = error.severity === 'error' ? '❌' : '⚠️'
-        lines.push(`${severity} ${error.path}: ${error.message}`)
+        const severity = error.severity === 'error' ? 'ERROR' : 'WARNING'
+        lines.push(`- ${severity} ${error.path}: ${error.message}`)
       }
+      lines.push('')
+    } else {
+      lines.push('Validation: OK')
       lines.push('')
     }
 
     if (result.config) {
       lines.push('## Services')
       lines.push('')
-      if (result.config.services && result.config.services.length > 0) {
+      if (result.config.services.length > 0) {
         for (const service of result.config.services) {
           lines.push(`### ${service.name}`)
           if (service.image) {
@@ -111,6 +132,9 @@ export class ComposePanelProvider {
           if (service.volumes && service.volumes.length > 0) {
             lines.push(`- Volumes: ${service.volumes.join(', ')}`)
           }
+          if (service.dependsOn && service.dependsOn.length > 0) {
+            lines.push(`- Depends on: ${service.dependsOn.join(', ')}`)
+          }
           if (service.restart) {
             lines.push(`- Restart: \`${service.restart}\``)
           }
@@ -121,7 +145,7 @@ export class ComposePanelProvider {
         lines.push('')
       }
 
-      if (result.config.networks && result.config.networks.length > 0) {
+      if (result.config.networks.length > 0) {
         lines.push('## Networks')
         lines.push('')
         for (const network of result.config.networks) {
@@ -130,7 +154,7 @@ export class ComposePanelProvider {
         lines.push('')
       }
 
-      if (result.config.volumes && result.config.volumes.length > 0) {
+      if (result.config.volumes.length > 0) {
         lines.push('## Volumes')
         lines.push('')
         for (const volume of result.config.volumes) {
@@ -144,7 +168,7 @@ export class ComposePanelProvider {
     lines.push('Original YAML:')
     lines.push('')
     lines.push('```yaml')
-    lines.push(this.currentContent)
+    lines.push(result.content)
     lines.push('```')
 
     return lines.join('\n')

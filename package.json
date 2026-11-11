@@ -27,7 +27,8 @@
     "test:disk": "vitest run src/__tests__/disk.test.ts",
     "test:core": "vitest run src/__tests__/core.test.ts",
     "test:ipc": "vitest run src/__tests__/ipc.test.ts",
-    "test:plugin": "vitest run src/__tests__/plugin.test.ts",
+    "test:plugin": "vitest run --root packages/plugin",
+    "build:plugin": "npm -C packages/core run build && npm -C packages/plugin run build",
     "test:watch": "vitest",
     "lint": "eslint src --ext .ts,.tsx",
     "typecheck": "tsc --noEmit"

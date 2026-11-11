@@ -12,7 +12,7 @@ export class LogPanelProvider {
   private panel: vscode.TextDocument | null = null
   private _currentContainerId: string | null = null
   private _currentContainerName: string | null = null
-  private followInterval: NodeJS.Timeout | null = null
+  private followInterval: ReturnType<typeof setInterval> | null = null
 
   constructor(logStore: LogStore) {
     this.logStore = logStore
@@ -22,19 +22,37 @@ export class LogPanelProvider {
     return this._currentContainerId
   }
 
-  async showLogs(containerId: string, containerName: string) {
+  get currentContainerName(): string | null {
+    return this._currentContainerName
+  }
+
+  async showLogs(containerId: string, containerName?: string) {
     this._currentContainerId = containerId
-    this._currentContainerName = containerName
+    this._currentContainerName = containerName || containerId.slice(0, 12)
 
     // Stop any existing follow interval
     this.stopFollow()
 
     // Fetch initial logs
     const logs = await this.logStore.fetchLogs(containerId, { tail: 500 })
-    const content = this.formatLogs(logs)
+    await this.render(this.formatLogs(logs))
 
-    // Create or update the document
-    if (this.panel && this.panel.uri) {
+    // Enable follow mode
+    this.logStore.setFollowMode(containerId, true)
+    this.startFollow()
+  }
+
+  /**
+   * Re-render the panel with logs matching a search term.
+   */
+  async search(term: string) {
+    if (!this._currentContainerId) return
+    const logs = this.logStore.filterLogs(this._currentContainerId, { search: term })
+    await this.render(this.formatLogs(logs))
+  }
+
+  private async render(content: string) {
+    if (this.panel && this.panel.uri && !this.panel.isClosed) {
       const edit = new vscode.WorkspaceEdit()
       const fullRange = new vscode.Range(
         new vscode.Position(0, 0),
@@ -50,20 +68,18 @@ export class LogPanelProvider {
       this.panel = doc
       await vscode.window.showTextDocument(doc, { preview: false })
     }
-
-    // Enable follow mode
-    this.logStore.setFollowMode(containerId, true)
-    this.startFollow()
   }
 
   private formatLogs(logs: LogEntry[]): string {
-    return logs
-      .map((entry) => {
-        const timestamp = entry.timestamp ? new Date(entry.timestamp).toISOString() : ''
-        const stream = entry.stream ? `[${entry.stream}] ` : ''
-        return `${timestamp} ${stream}${entry.message}`
-      })
-      .join('\n')
+    const header = `# Logs: ${this._currentContainerName || this._currentContainerId || 'unknown'}`
+    if (logs.length === 0) {
+      return `${header}\n\nNo log output.`
+    }
+    const lines = logs.map((entry) => {
+      const timestamp = entry.timestamp ? `${entry.timestamp} ` : ''
+      return `${timestamp}[${entry.stream}] ${entry.message}`
+    })
+    return [header, '', ...lines].join('\n')
   }
 
   private startFollow() {
@@ -71,30 +87,32 @@ export class LogPanelProvider {
 
     this.followInterval = setInterval(async () => {
       if (!this._currentContainerId) return
+      if (!this.logStore.isFollowMode(this._currentContainerId)) return
 
-      const isFollow = this.logStore.isFollowMode(this._currentContainerId)
-      if (!isFollow) return
+      const logs = this.logStore.getLogs(this._currentContainerId)
+      if (logs.length === 0 || !this.panel) return
 
-      const logs = await this.logStore.getLogs(this._currentContainerId)
-      if (logs.length === 0) return
-
-      const content = this.formatLogs(logs)
-      if (this.panel) {
-        const edit = new vscode.WorkspaceEdit()
-        const fullRange = new vscode.Range(
-          new vscode.Position(0, 0),
-          new vscode.Position(this.panel.lineCount, 0),
-        )
-        edit.replace(this.panel.uri, fullRange, content)
-        await vscode.workspace.applyEdit(edit)
+      try {
+        await this.render(this.formatLogs(logs))
+      } catch {
+        // Editor may have been closed between ticks
       }
     }, 2000)
+    // Don't keep the extension host (or test runner) alive for this timer
+    ;(this.followInterval as any).unref?.()
   }
 
-  private stopFollow() {
+  stopFollow() {
     if (this.followInterval) {
       clearInterval(this.followInterval)
       this.followInterval = null
+    }
+  }
+
+  dispose() {
+    this.stopFollow()
+    if (this._currentContainerId) {
+      this.logStore.setFollowMode(this._currentContainerId, false)
     }
   }
 }

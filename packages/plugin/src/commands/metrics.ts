@@ -5,42 +5,34 @@
  */
 
 import * as vscode from 'vscode'
-import { MetricsStore } from '@sentrydesk/core'
+import { DockerClient, MetricsStore } from '@sentrydesk/core'
 import { MetricsPanelProvider } from '../ui/metrics'
+import { pickContainer } from './pick'
 
 export function registerMetricsCommands(
   panelProvider: MetricsPanelProvider,
   metricsStore: MetricsStore,
+  dockerClient: DockerClient = DockerClient.getInstance(),
 ): vscode.Disposable[] {
   const disposables: vscode.Disposable[] = []
 
   // View metrics
   disposables.push(
     vscode.commands.registerCommand('sentrydesk.viewMetrics', async (node?: any) => {
-      let containerId: string | undefined
-      let containerName: string | undefined
-
-      if (node) {
-        containerId = node.containerId || node.id
-        containerName = node.containerName || node.name
+      let target: { id: string; name: string } | undefined
+      if (node && (node.containerId || node.id)) {
+        const id: string = node.containerId || node.id
+        target = { id, name: node.containerName || node.name || id.slice(0, 12) }
+      } else {
+        target = await pickContainer(dockerClient, 'Select a container to view metrics')
       }
+      if (!target) return
 
-      if (!containerId) {
-        const containers = await metricsStore.getContainerNames()
-        if (containers.length === 0) {
-          vscode.window.showWarningMessage('No containers available. Connect to Docker first.')
-          return
-        }
-        const selected = await vscode.window.showQuickPick(containers, {
-          placeHolder: 'Select a container to view metrics',
-        })
-        if (!selected) return
-        containerId = selected
-        containerName = selected
-      }
+      // Make sure collection is running so the panel fills in
+      metricsStore.start()
 
       try {
-        await panelProvider.showMetrics(containerId, containerName)
+        await panelProvider.showMetrics(target.id, target.name)
       } catch (err: any) {
         vscode.window.showErrorMessage(`Failed to load metrics: ${err.message}`)
       }

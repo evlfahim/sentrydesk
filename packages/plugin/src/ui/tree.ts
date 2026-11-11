@@ -7,40 +7,53 @@
 import * as vscode from 'vscode'
 import { DockerClient, ContainerInfo, MetricsStore, MetricsEntry } from '@sentrydesk/core'
 
+type TreeChangeEvent = ContainerTreeItem | ContainerTreeItem[] | undefined | null | void
+
 export class ContainerTreeProvider implements vscode.TreeDataProvider<ContainerTreeItem> {
   private dockerClient: DockerClient
   private metricsStore: MetricsStore
-  private _onDidChangeTree: vscode.EventEmitter<ContainerTreeItem | ContainerTreeItem[] | ContainerTreeItem[] | void>
+  private _onDidChangeTreeData: vscode.EventEmitter<TreeChangeEvent>
   private containers: ContainerInfo[] = []
   private metricsMap: Map<string, MetricsEntry> = new Map()
-  private refreshInterval: NodeJS.Timeout | null = null
+  private unsubscribeMetrics: () => void
+
+  readonly onDidChangeTreeData: vscode.Event<TreeChangeEvent>
 
   constructor(dockerClient: DockerClient, metricsStore: MetricsStore) {
     this.dockerClient = dockerClient
     this.metricsStore = metricsStore
-    this._onDidChangeTree = new vscode.EventEmitter<ContainerTreeItem | ContainerTreeItem[] | ContainerTreeItem[] | void>()
+    this._onDidChangeTreeData = new vscode.EventEmitter<TreeChangeEvent>()
+    this.onDidChangeTreeData = this._onDidChangeTreeData.event
 
     // Subscribe to metrics updates
-    this.metricsStore.addListener((entries: MetricsEntry[]) => {
+    this.unsubscribeMetrics = this.metricsStore.subscribe((entries: MetricsEntry[]) => {
       for (const entry of entries) {
         this.metricsMap.set(entry.containerId, entry)
       }
-      this._onDidChangeTree.fire()
+      this._onDidChangeTreeData.fire()
     })
-  }
-
-  get onDidChangeTree(): vscode.Event<ContainerTreeItem | ContainerTreeItem[] | ContainerTreeItem[] | void> {
-    return this._onDidChangeTree.event
   }
 
   async refresh() {
     try {
-      this.containers = await this.dockerClient.getContainers()
-      this._onDidChangeTree.fire()
+      this.containers = this.dockerClient.isConnected() ? await this.dockerClient.getContainers() : []
     } catch {
       this.containers = []
-      this._onDidChangeTree.fire()
     }
+    this._onDidChangeTreeData.fire()
+  }
+
+  /**
+   * Drop cached containers and metrics (used on disconnect).
+   */
+  clear() {
+    this.containers = []
+    this.metricsMap.clear()
+    this._onDidChangeTreeData.fire()
+  }
+
+  getContainers(): ContainerInfo[] {
+    return this.containers
   }
 
   getTreeItem(element: ContainerTreeItem): vscode.TreeItem {
@@ -49,7 +62,7 @@ export class ContainerTreeProvider implements vscode.TreeDataProvider<ContainerT
 
   async getChildren(element?: ContainerTreeItem): Promise<ContainerTreeItem[]> {
     if (element) {
-      // Children of a container (not implemented — flat list)
+      // Flat list — containers have no children
       return []
     }
 
@@ -58,7 +71,6 @@ export class ContainerTreeProvider implements vscode.TreeDataProvider<ContainerT
         new ContainerTreeItem({
           label: 'No containers found',
           description: 'Connect to Docker to see containers',
-          collapsibleState: vscode.TreeItemCollapsibleState.None,
           iconPath: new vscode.ThemeIcon('info'),
         }),
       ]
@@ -76,7 +88,6 @@ export class ContainerTreeProvider implements vscode.TreeDataProvider<ContainerT
       return new ContainerTreeItem({
         label: c.name,
         description: `${c.state} | CPU: ${cpuPercent.toFixed(1)}% | MEM: ${memPercent.toFixed(1)}%`,
-        collapsibleState: vscode.TreeItemCollapsibleState.None,
         iconPath: new vscode.ThemeIcon(statusIcon, new vscode.ThemeColor(`charts.${statusColor}`)),
         containerId: c.id,
         containerName: c.name,
@@ -87,24 +98,51 @@ export class ContainerTreeProvider implements vscode.TreeDataProvider<ContainerT
       })
     })
   }
+
+  dispose() {
+    this.unsubscribeMetrics()
+    this._onDidChangeTreeData.dispose()
+  }
+}
+
+export interface ContainerTreeItemOptions {
+  label: string
+  description?: string
+  collapsibleState?: vscode.TreeItemCollapsibleState
+  iconPath?: vscode.ThemeIcon
+  containerId?: string
+  containerName?: string
+  state?: string
+  cpuPercent?: number
+  memoryPercent?: number
+  memoryUsage?: number
 }
 
 export class ContainerTreeItem extends vscode.TreeItem {
-  constructor(
-    public readonly label: string,
-    public readonly description?: string,
-    public readonly collapsibleState: vscode.TreeItemCollapsibleState = vscode.TreeItemCollapsibleState.None,
-    public readonly iconPath?: vscode.ThemeIcon | vscode.Uri | { light: vscode.Uri; dark: vscode.Uri } | vscode.ThemeColor,
-    public readonly containerId?: string,
-    public readonly containerName?: string,
-    public readonly state?: string,
-    public readonly cpuPercent?: number,
-    public readonly memoryPercent?: number,
-    public readonly memoryUsage?: number,
-  ) {
-    super(label, collapsibleState)
+  label: string
+  containerId?: string
+  containerName?: string
+  state?: string
+  cpuPercent?: number
+  memoryPercent?: number
+  memoryUsage?: number
+
+  constructor(options: ContainerTreeItemOptions) {
+    const collapsibleState = options.collapsibleState ?? vscode.TreeItemCollapsibleState.None
+    super(options.label, collapsibleState)
+    this.label = options.label
+    this.description = options.description
+    this.collapsibleState = collapsibleState
+    this.iconPath = options.iconPath
+    this.containerId = options.containerId
+    this.containerName = options.containerName
+    this.state = options.state
+    this.cpuPercent = options.cpuPercent
+    this.memoryPercent = options.memoryPercent
+    this.memoryUsage = options.memoryUsage
+    // Only real containers get the context value used by inline menu actions
+    this.contextValue = options.containerId ? `container-${options.state || 'unknown'}` : 'placeholder'
     this.tooltip = this.formatTooltip()
-    this.contextValue = 'container'
   }
 
   private formatTooltip(): string {

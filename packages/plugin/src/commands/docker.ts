@@ -6,12 +6,14 @@
  */
 
 import * as vscode from 'vscode'
-import { DockerClient, ContainerInfo } from '@sentrydesk/core'
+import { DockerClient, MetricsStore } from '@sentrydesk/core'
 import { ContainerTreeProvider } from '../ui/tree'
+import { pickContainer } from './pick'
 
 export function registerDockerCommands(
   dockerClient: DockerClient,
   treeProvider: ContainerTreeProvider,
+  metricsStore?: MetricsStore,
 ): vscode.Disposable[] {
   const disposables: vscode.Disposable[] = []
 
@@ -20,6 +22,7 @@ export function registerDockerCommands(
     vscode.commands.registerCommand('sentrydesk.connect', async () => {
       try {
         await dockerClient.connect()
+        metricsStore?.start()
         vscode.window.showInformationMessage('Connected to Docker daemon')
         await refreshContainers()
       } catch (err: any) {
@@ -28,12 +31,13 @@ export function registerDockerCommands(
     }),
   )
 
-  // Disconnect from Docker
+  // Disconnect from Docker — the daemon API is stateless HTTP, so this stops
+  // polling and clears cached state in the views
   disposables.push(
     vscode.commands.registerCommand('sentrydesk.disconnect', async () => {
-      dockerClient.disconnect()
+      metricsStore?.stop()
+      treeProvider.clear()
       vscode.window.showInformationMessage('Disconnected from Docker daemon')
-      await refreshContainers()
     }),
   )
 
@@ -44,15 +48,15 @@ export function registerDockerCommands(
     }),
   )
 
-  // Restart container (from tree view context)
+  // Restart container (from tree view context or command palette)
   disposables.push(
     vscode.commands.registerCommand('sentrydesk.restart', async (node?: any) => {
-      const containerId = getContainerId(node)
-      if (!containerId) return
+      const target = await resolveTarget(node, 'restart')
+      if (!target) return
 
       try {
-        await dockerClient.restartContainer(containerId)
-        vscode.window.showInformationMessage(`Container ${containerId.slice(0, 8)} restarted`)
+        await dockerClient.restartContainer(target.id)
+        vscode.window.showInformationMessage(`Container ${target.name} restarted`)
         await refreshContainers()
       } catch (err: any) {
         vscode.window.showErrorMessage(`Failed to restart container: ${err.message}`)
@@ -63,12 +67,12 @@ export function registerDockerCommands(
   // Stop container
   disposables.push(
     vscode.commands.registerCommand('sentrydesk.stop', async (node?: any) => {
-      const containerId = getContainerId(node)
-      if (!containerId) return
+      const target = await resolveTarget(node, 'stop')
+      if (!target) return
 
       try {
-        await dockerClient.stopContainer(containerId)
-        vscode.window.showInformationMessage(`Container ${containerId.slice(0, 8)} stopped`)
+        await dockerClient.stopContainer(target.id)
+        vscode.window.showInformationMessage(`Container ${target.name} stopped`)
         await refreshContainers()
       } catch (err: any) {
         vscode.window.showErrorMessage(`Failed to stop container: ${err.message}`)
@@ -79,12 +83,12 @@ export function registerDockerCommands(
   // Start container
   disposables.push(
     vscode.commands.registerCommand('sentrydesk.start', async (node?: any) => {
-      const containerId = getContainerId(node)
-      if (!containerId) return
+      const target = await resolveTarget(node, 'start')
+      if (!target) return
 
       try {
-        await dockerClient.startContainer(containerId)
-        vscode.window.showInformationMessage(`Container ${containerId.slice(0, 8)} started`)
+        await dockerClient.startContainer(target.id)
+        vscode.window.showInformationMessage(`Container ${target.name} started`)
         await refreshContainers()
       } catch (err: any) {
         vscode.window.showErrorMessage(`Failed to start container: ${err.message}`)
@@ -95,20 +99,19 @@ export function registerDockerCommands(
   // Remove container
   disposables.push(
     vscode.commands.registerCommand('sentrydesk.remove', async (node?: any) => {
-      const containerId = getContainerId(node)
-      if (!containerId) return
+      const target = await resolveTarget(node, 'remove')
+      if (!target) return
 
       const confirmed = await vscode.window.showWarningMessage(
-        `Are you sure you want to remove container ${containerId.slice(0, 8)}?`,
+        `Are you sure you want to remove container ${target.name}?`,
         { modal: true },
         'Yes',
-        'No',
       )
       if (confirmed !== 'Yes') return
 
       try {
-        await dockerClient.removeContainer(containerId, true)
-        vscode.window.showInformationMessage(`Container ${containerId.slice(0, 8)} removed`)
+        await dockerClient.removeContainer(target.id, true)
+        vscode.window.showInformationMessage(`Container ${target.name} removed`)
         await refreshContainers()
       } catch (err: any) {
         vscode.window.showErrorMessage(`Failed to remove container: ${err.message}`)
@@ -124,12 +127,13 @@ export function registerDockerCommands(
     }
   }
 
-  return disposables
-}
+  async function resolveTarget(node: any, action: string) {
+    if (node && (node.containerId || node.id)) {
+      const id: string = node.containerId || node.id
+      return { id, name: node.containerName || node.name || id.slice(0, 12) }
+    }
+    return pickContainer(dockerClient, `Select a container to ${action}`)
+  }
 
-function getContainerId(node: any): string | undefined {
-  if (!node) return undefined
-  if (node.containerId) return node.containerId
-  if (node.id) return node.id
-  return undefined
+  return disposables
 }

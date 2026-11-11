@@ -14,7 +14,7 @@ import { CleanupPanelProvider } from '../ui/cleanup'
 
 export function registerDashboardCommands(
   _context: vscode.ExtensionContext,
-  _treeProvider: ContainerTreeProvider,
+  treeProvider: ContainerTreeProvider,
   _logPanelProvider: LogPanelProvider,
   _metricsPanelProvider: MetricsPanelProvider,
   _composePanelProvider: ComposePanelProvider,
@@ -28,11 +28,19 @@ export function registerDashboardCommands(
       // Open the containers tree view
       await vscode.commands.executeCommand('sentrydesk.containers.focus')
 
+      await treeProvider.refresh()
+      const containers = treeProvider.getContainers()
+      const running = containers.filter((c) => c.state === 'running').length
+
       // Open a new tab showing a summary
       const doc = await vscode.workspace.openTextDocument({
         language: 'markdown',
         content: [
           '# SentryDesk Dashboard',
+          '',
+          `Containers: ${containers.length} total, ${running} running`,
+          '',
+          ...containers.map((c) => `- **${c.name}** (${c.image}) — ${c.state}, ${c.status}`),
           '',
           '## Quick Actions',
           '',
@@ -49,7 +57,7 @@ export function registerDashboardCommands(
           '',
           '## Metrics',
           '',
-          'Metrics are collected every 2 seconds. Use `SentryDesk: Start Metrics` to begin collection.',
+          'Metrics are collected every 2 seconds. Use `SentryDesk: Start Metrics Collection` to begin collection.',
           '',
           '## Logs',
           '',

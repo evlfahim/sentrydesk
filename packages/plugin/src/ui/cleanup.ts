@@ -29,7 +29,7 @@ export class CleanupPanelProvider {
     const totalSavings = this.cleanupEngine.getTotalSavings()
     const content = this.formatCleanup(suggestions, totalSavings)
 
-    if (this.panel && this.panel.uri) {
+    if (this.panel && this.panel.uri && !this.panel.isClosed) {
       const edit = new vscode.WorkspaceEdit()
       const fullRange = new vscode.Range(
         new vscode.Position(0, 0),
@@ -39,7 +39,7 @@ export class CleanupPanelProvider {
       await vscode.workspace.applyEdit(edit)
     } else {
       const doc = await vscode.workspace.openTextDocument({
-        language: 'cleanup',
+        language: 'markdown',
         content,
       })
       this.panel = doc
@@ -90,7 +90,7 @@ export class CleanupPanelProvider {
   }
 }
 
-function formatBytes(bytes: number): string {
+export function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B'
   const k = 1024
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB']

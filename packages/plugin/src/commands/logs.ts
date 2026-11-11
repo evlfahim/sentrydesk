@@ -1,50 +1,59 @@
 /**
  * Log viewer commands for the VS Code extension.
  *
- * Opens a read-only editor panel showing container logs with follow mode.
+ * Opens a read-only editor panel showing container logs with follow mode and search.
  */
 
 import * as vscode from 'vscode'
-import { LogStore, LogEntry } from '@sentrydesk/core'
+import { DockerClient, LogStore } from '@sentrydesk/core'
 import { LogPanelProvider } from '../ui/logs'
+import { pickContainer } from './pick'
 
 export function registerLogCommands(
   panelProvider: LogPanelProvider,
   logStore: LogStore,
+  dockerClient: DockerClient = DockerClient.getInstance(),
 ): vscode.Disposable[] {
   const disposables: vscode.Disposable[] = []
 
   // View logs for a container
   disposables.push(
     vscode.commands.registerCommand('sentrydesk.viewLogs', async (node?: any) => {
-      let containerId: string | undefined
-      let containerName: string | undefined
-
-      if (node) {
-        containerId = node.containerId || node.id
-        containerName = node.containerName || node.name
+      let target: { id: string; name: string } | undefined
+      if (node && (node.containerId || node.id)) {
+        const id: string = node.containerId || node.id
+        target = { id, name: node.containerName || node.name || id.slice(0, 12) }
+      } else {
+        target = await pickContainer(dockerClient, 'Select a container to view logs')
       }
-
-      if (!containerId) {
-        // Prompt user to select a container
-        const containers = await logStore.getContainerNames()
-        if (containers.length === 0) {
-          vscode.window.showWarningMessage('No containers available. Connect to Docker first.')
-          return
-        }
-        const selected = await vscode.window.showQuickPick(containers, {
-          placeHolder: 'Select a container to view logs',
-        })
-        if (!selected) return
-        containerId = selected
-        containerName = selected
-      }
+      if (!target) return
 
       try {
-        await panelProvider.showLogs(containerId, containerName)
+        await panelProvider.showLogs(target.id, target.name)
       } catch (err: any) {
         vscode.window.showErrorMessage(`Failed to load logs: ${err.message}`)
       }
+    }),
+  )
+
+  // Search the current log view
+  disposables.push(
+    vscode.commands.registerCommand('sentrydesk.searchLogs', async () => {
+      if (!panelProvider.currentContainerId) {
+        vscode.window.showWarningMessage('Open container logs first.')
+        return
+      }
+      const term = await vscode.window.showInputBox({
+        prompt: 'Search logs (leave empty to show all)',
+        placeHolder: 'error',
+      })
+      if (term === undefined) return
+
+      // Pause follow mode while a search is shown so it isn't overwritten
+      if (term.length > 0) {
+        logStore.setFollowMode(panelProvider.currentContainerId, false)
+      }
+      await panelProvider.search(term)
     }),
   )
 
@@ -56,9 +65,7 @@ export function registerLogCommands(
 
       const current = logStore.isFollowMode(containerId)
       logStore.setFollowMode(containerId, !current)
-      vscode.window.showInformationMessage(
-        `Log follow mode ${!current ? 'enabled' : 'disabled'}`,
-      )
+      vscode.window.showInformationMessage(`Log follow mode ${!current ? 'enabled' : 'disabled'}`)
     }),
   )
 

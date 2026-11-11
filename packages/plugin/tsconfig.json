@@ -1,11 +1,10 @@
-/**
- * TypeScript configuration for the VS Code extension package.
- */
 {
-  "extends": "../../tsconfig.json",
   "compilerOptions": {
     "module": "commonjs",
+    "moduleResolution": "node",
     "target": "ES2021",
+    "lib": ["ES2021"],
+    "types": ["node", "vscode"],
     "outDir": "dist",
     "rootDir": "src",
     "declaration": true,
@@ -13,6 +12,7 @@
     "sourceMap": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
     "strict": true
   },
   "include": ["src/**/*"],
