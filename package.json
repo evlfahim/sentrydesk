@@ -5,6 +5,7 @@
   "main": "dist-electron/main.js",
   "author": "SentryDesk",
   "license": "MIT",
+  "homepage": "https://github.com/sentrydesk/sentrydesk",
   "workspaces": [
     "packages/*"
   ],
@@ -12,6 +13,8 @@
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
     "build:vite": "tsc && vite build",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "build:desktop": "npm -C packages/core run build && tsc && vite build && tsc -p tsconfig.electron.json && electron-builder",
     "preview": "vite preview",
     "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "electron:build": "tsc && vite build && electron-builder",
@@ -59,8 +62,17 @@
     },
     "files": [
       "dist/**/*",
-      "dist-electron/**/*"
+      "dist-electron/**/*",
+      "packages/core/dist/**/*"
     ],
+    "linux": {
+      "category": "Utility",
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "maintainer": "sentrydesk@users.noreply.github.com"
+    },
     "win": {
       "target": [
         "nsis"
@@ -70,12 +82,6 @@
       "target": [
         "dmg",
         "zip"
-      ]
-    },
-    "linux": {
-      "target": [
-        "AppImage",
-        "deb"
       ]
     }
   }

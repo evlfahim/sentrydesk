@@ -13,6 +13,14 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    // Do not bundle native modules into the renderer — they belong only in the
+    // Electron main process and are accessed via IPC.
+    rollupOptions: {
+      external: ['@sentrydesk/core', 'dockerode'],
+    },
+  },
+  optimizeDeps: {
+    exclude: ['@sentrydesk/core', 'dockerode'],
   },
   server: {
     port: 5173,
