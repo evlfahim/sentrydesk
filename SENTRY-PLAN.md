@@ -30,7 +30,7 @@ Core Docker client, metrics fetcher, log parser, and cleanup engine are extracte
 - [x] 2. Implement Docker client wrapper and validate connection using docker ps equivalent via npm run test:client.
 - [x] 3. Build real-time CPU/RAM metrics stream and verify output via npm run test:metrics.
 - [x] 4. Create log viewer with search/filter and confirm functionality with npm run test:logs.
-- [ ] 5. Add one-click restart handler and verify container lifecycle changes via npm run test:restart.
+- [x] 5. Add one-click restart handler and verify container lifecycle changes via npm run test:restart.
 - [ ] 6. Implement Docker Compose YAML viewer and validate parsing with npm run test:compose.
 - [ ] 7. Develop disk space analyzer and verify cleanup suggestions with npm run test:disk.
 - [ ] 8. Extract all Docker client and metrics logic into a shared @sentrydesk/core package, then run npm run test:core.
